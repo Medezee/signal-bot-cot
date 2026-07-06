@@ -1,6 +1,6 @@
 # Signal Bot with TAK integration
 
-A small project that handles the integration between Signal messanger bot and different consumers for [Cursor-on-Target](https://www.mitre.org/sites/default/files/pdf/09_4937.pdf) data. The program itself is done with hexagonal approach to ease the process of connecting new consumers/producers services. 
+A small project that handles the integration between Signal messenger bot and different consumers for [Cursor-on-Target](https://www.mitre.org/sites/default/files/pdf/09_4937.pdf) data. The program itself is done with hexagonal approach to ease the process of connecting new consumers/producers services. 
 
 In this example Signal Bot producer was developed + TAK server/client consumers based on [PyTAK](https://github.com/snstac/pytak/) and raw socket connection on pure python. 
 
@@ -53,11 +53,35 @@ Example includes a suggested local TAK server in `taky-server` based on [TAKy](h
 6. Everything should be ready now. To start the project run next commands:
 ```sh
 uv sync
-un run src/main.py`
+uv run src/main.py
 ```
+# Consumers & Producers Management
+
+The app follows some flavour of hexagonal arhitecture. This allows to easily add/change data producers/consumers. In order to create a new consumer producer just make sure it uses the required `process_queue` (in case of producers) and `out_queue` (in case of consumers) queues to pass/receive the data. `core` will handle the rest and pass the transformed info to from `process_queue` to `out_queue`. 
+
+As an example in this project raw socket consumer could be exchanged with `PyTAK` consumer implementation. For this simply uncomment/comment neccessary services. For example if you want to use `PyTak` implementation instead of Raw sockets one in [`main.py`](src/main.py) do:
+```python
+async def main():
+    ...
+    # PyTAK/TAK init
+    pytak_cli = await pytak_setup(out_queue)
+
+    # raw_socket_adapter = RawSocketTAKAdapter(out_queue)
+
+    tasks = [
+        asyncio.create_task(core_service.run(), name="core_service"),
+        asyncio.create_task(pytak_cli.run(), name="pytak"),
+        # asyncio.create_task(raw_socket_adapter.run(), name="raw_socket")
+    ]
+
+    await asyncio.gather(*tasks)
+```
+
+Make sure only one consumer is enabled at once as the `asyncio.Queue` are not thread-safe. It would lead to race conditions where one of the consumers might process the message. This is intentional by the design. However it's quite easily fixes with multiple "OUT" queues introduction for each consumer. 
 
 # Libraries & Tools
 - [Docker](https://docs.docker.com/engine/install/) & [docker-compose](https://docs.docker.com/compose/install/)
 - [Python](https://www.python.org/downloads/) (3.12+) + [uv](https://docs.astral.sh/uv/) (suggested)
 - [PyTAK](https://github.com/snstac/pytak/)
 - [TAKy](https://github.com/tkuester/taky)
+
