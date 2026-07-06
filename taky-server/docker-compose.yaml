@@ -1,0 +1,7 @@
+services:
+  taky:
+    build: .
+    container_name: taky
+    restart: unless-stopped
+    ports:
+      - "8087:8087/tcp"
